@@ -283,6 +283,90 @@ input[type=range]:disabled { opacity: 0.3; cursor: not-allowed; }
 }
 .btn-download:hover { background: #15803d; transform: translateY(-1px); }
 
+/* ── Test section ── */
+.test-section {
+  background: #0f0e0e;
+  border: 1px solid #1f1a1a;
+  border-radius: 14px;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.test-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.test-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ccc;
+}
+.test-sub {
+  font-size: 12px;
+  color: #444;
+  margin-top: 3px;
+}
+.btn-test {
+  padding: 10px 20px;
+  border-radius: 10px;
+  border: 1px solid #2a1515;
+  background: #1a0e0e;
+  color: #ef4444;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s, border-color 0.2s;
+  flex-shrink: 0;
+}
+.btn-test:hover:not(:disabled) { background: #220f0f; border-color: #ef4444; }
+.btn-test:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.test-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: #555;
+}
+.test-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #2a2a2a;
+  border-top-color: #ef4444;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.test-result {
+  background: #0a0a0a;
+  border: 1px solid #1a1a1a;
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.test-meta {
+  display: flex;
+  gap: 20px;
+  font-size: 12px;
+  color: #555;
+}
+.test-meta strong { color: #888; }
+.test-transcript {
+  font-size: 14px;
+  color: #bbb;
+  line-height: 1.6;
+}
+.test-transcript em { color: #4ade80; font-style: normal; }
+.test-error { font-size: 13px; color: #ef4444; }
+
 /* ── Error ── */
 .error-box {
   background: #110909;

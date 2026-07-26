@@ -28,6 +28,8 @@ export default function App() {
   const [draggingVideo, setDraggingVideo] = useState(false)
   const [draggingDecoy, setDraggingDecoy] = useState(false)
   const [monoVol, setMonoVol]     = useState(-31.6)
+  const [testStep, setTestStep]   = useState('idle') // idle | uploading | transcribing | done | error
+  const [transcript, setTranscript] = useState(null)
 
   const videoRef = useRef()
   const decoyRef = useRef()
@@ -120,6 +122,46 @@ export default function App() {
     } catch (e) {
       setStep('error')
       setLog(String(e))
+    }
+  }
+
+  async function testTranscription() {
+    if (!outputURL || testStep === 'uploading' || testStep === 'transcribing') return
+    setTestStep('uploading')
+    setTranscript(null)
+
+    const AAI_KEY = '962f87f99092456393935e7b6c6e51ac'
+
+    try {
+      const blob = await fetch(outputURL).then(r => r.blob())
+
+      const { upload_url } = await fetch('https://api.assemblyai.com/v2/upload', {
+        method: 'POST',
+        headers: { authorization: AAI_KEY },
+        body: blob,
+      }).then(r => r.json())
+
+      setTestStep('transcribing')
+
+      const { id } = await fetch('https://api.assemblyai.com/v2/transcript', {
+        method: 'POST',
+        headers: { authorization: AAI_KEY, 'content-type': 'application/json' },
+        body: JSON.stringify({ audio_url: upload_url, language_detection: true }),
+      }).then(r => r.json())
+
+      while (true) {
+        await new Promise(r => setTimeout(r, 2500))
+        const data = await fetch(`https://api.assemblyai.com/v2/transcript/${id}`, {
+          headers: { authorization: AAI_KEY },
+        }).then(r => r.json())
+        if (data.status === 'completed') { setTranscript(data); break }
+        if (data.status === 'error') throw new Error(data.error)
+      }
+
+      setTestStep('done')
+    } catch (e) {
+      setTranscript({ error: e.message })
+      setTestStep('error')
     }
   }
 
@@ -234,6 +276,50 @@ export default function App() {
           <a className="btn-download" href={outputURL} download={outputName}>
             Baixar
           </a>
+        </div>
+      )}
+
+      {outputURL && (
+        <div className="test-section">
+          <div className="test-header">
+            <div>
+              <div className="test-title">Verificar camuflagem</div>
+              <div className="test-sub">Transcreve o que o fingerprint ouve (canal mono)</div>
+            </div>
+            <button
+              className="btn-test"
+              onClick={testTranscription}
+              disabled={testStep === 'uploading' || testStep === 'transcribing'}
+            >
+              {testStep === 'uploading'    ? 'Enviando...'
+               : testStep === 'transcribing' ? 'Transcrevendo...'
+               : testStep === 'done'         ? 'Testar de novo'
+               : 'Testar'}
+            </button>
+          </div>
+
+          {(testStep === 'uploading' || testStep === 'transcribing') && (
+            <div className="test-loading">
+              <div className="test-spinner" />
+              <span>{testStep === 'uploading' ? 'Enviando para AssemblyAI...' : 'Transcrevendo...'}</span>
+            </div>
+          )}
+
+          {testStep === 'done' && transcript && (
+            <div className="test-result">
+              <div className="test-meta">
+                <span>Idioma: <strong>{transcript.language_code?.toUpperCase() ?? '?'}</strong></span>
+                <span>Confiança: <strong>{transcript.confidence ? (transcript.confidence * 100).toFixed(0) + '%' : '?'}</strong></span>
+              </div>
+              <p className="test-transcript">
+                {transcript.text?.trim() || <em>(nada detectado — decoy inaudível ✓)</em>}
+              </p>
+            </div>
+          )}
+
+          {testStep === 'error' && (
+            <p className="test-error">Erro: {transcript?.error}</p>
+          )}
         </div>
       )}
 
