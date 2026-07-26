@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { FFmpeg } from '@ffmpeg/ffmpeg'
 import { fetchFile, toBlobURL } from '@ffmpeg/util'
 import './App.css'
@@ -17,19 +17,31 @@ const STEPS = {
 }
 
 export default function App() {
-  const [video, setVideo]       = useState(null)
-  const [decoy, setDecoy]       = useState(null)
-  const [step, setStep]         = useState('idle')
-  const [progress, setProgress] = useState(0)
-  const [log, setLog]           = useState('')
+  const [video, setVideo]         = useState(null)
+  const [decoy, setDecoy]         = useState(null)
+  const [decoyIsDefault, setDecoyIsDefault] = useState(false)
+  const [step, setStep]           = useState('idle')
+  const [progress, setProgress]   = useState(0)
+  const [log, setLog]             = useState('')
   const [outputURL, setOutputURL] = useState(null)
   const [outputName, setOutputName] = useState('')
   const [draggingVideo, setDraggingVideo] = useState(false)
   const [draggingDecoy, setDraggingDecoy] = useState(false)
-  const [monoVol, setMonoVol] = useState(-31.6)
+  const [monoVol, setMonoVol]     = useState(-31.6)
 
   const videoRef = useRef()
   const decoyRef = useRef()
+
+  useEffect(() => {
+    fetch('/decoy.mp3')
+      .then(r => r.blob())
+      .then(blob => {
+        const file = new File([blob], 'decoy.mp3', { type: 'audio/mpeg' })
+        setDecoy(file)
+        setDecoyIsDefault(true)
+      })
+      .catch(() => {})
+  }, [])
 
   const handleVideo = useCallback(f => {
     if (!f) return
@@ -40,6 +52,7 @@ export default function App() {
   const handleDecoy = useCallback(f => {
     if (!f) return
     setDecoy(f)
+    setDecoyIsDefault(false)
     setOutputURL(null)
   }, [])
 
@@ -66,19 +79,14 @@ export default function App() {
       await ffmpegInstance.writeFile('input_video', await fetchFile(video))
       await ffmpegInstance.writeFile('input_decoy', await fetchFile(decoy))
 
-      // get video duration
       let duration = null
       ffmpegInstance.on('log', ({ message }) => {
         const m = message.match(/Duration:\s*(\d+):(\d+):([\d.]+)/)
-        if (m) {
-          duration = parseInt(m[1]) * 3600 + parseInt(m[2]) * 60 + parseFloat(m[3])
-        }
+        if (m) duration = parseInt(m[1]) * 3600 + parseInt(m[2]) * 60 + parseFloat(m[3])
         setLog(message)
       })
 
-      // probe duration via a short stderr pass
-      await ffmpegInstance.exec(['-i', 'input_video', '-f', 'null', '-'])
-        .catch(() => {})
+      await ffmpegInstance.exec(['-i', 'input_video', '-f', 'null', '-']).catch(() => {})
 
       const dur = duration ?? 60
 
@@ -153,7 +161,7 @@ export default function App() {
 
         {/* DECOY */}
         <div
-          className={`dropzone${draggingDecoy ? ' dragging' : ''}${decoy ? ' has-file' : ''}`}
+          className={`dropzone${draggingDecoy ? ' dragging' : ''}${decoy ? ' has-file' : ''}${decoyIsDefault ? ' default-decoy' : ''}`}
           onClick={() => decoyRef.current.click()}
           onDragOver={e => { e.preventDefault(); setDraggingDecoy(true) }}
           onDragLeave={() => setDraggingDecoy(false)}
@@ -165,12 +173,15 @@ export default function App() {
             <div className="file-info">
               <span className="file-icon">🎵</span>
               <span className="file-name">{decoy.name}</span>
-              <span className="file-size">{(decoy.size / 1024 / 1024).toFixed(1)} MB</span>
+              {decoyIsDefault
+                ? <span className="file-tag">padrão · clique pra trocar</span>
+                : <span className="file-size">{(decoy.size / 1024 / 1024).toFixed(1)} MB</span>
+              }
             </div>
           ) : (
             <div className="drop-hint">
               <span className="drop-icon">🎵</span>
-              <span>Arraste ou clique</span>
+              <span>Carregando...</span>
             </div>
           )}
         </div>
