@@ -17,31 +17,24 @@ const STEPS = {
 }
 
 export default function App() {
-  const [video, setVideo]         = useState(null)
-  const [decoy, setDecoy]         = useState(null)
-  const [decoyIsDefault, setDecoyIsDefault] = useState(false)
-  const [step, setStep]           = useState('idle')
-  const [progress, setProgress]   = useState(0)
-  const [log, setLog]             = useState('')
-  const [outputURL, setOutputURL] = useState(null)
+  const [video, setVideo]           = useState(null)
+  const [decoy, setDecoy]           = useState(null)
+  const [step, setStep]             = useState('idle')
+  const [progress, setProgress]     = useState(0)
+  const [log, setLog]               = useState('')
+  const [outputURL, setOutputURL]   = useState(null)
   const [outputName, setOutputName] = useState('')
-  const [draggingVideo, setDraggingVideo] = useState(false)
-  const [draggingDecoy, setDraggingDecoy] = useState(false)
-  const [monoVol, setMonoVol]     = useState(-31.6)
-  const [testStep, setTestStep]   = useState('idle') // idle | uploading | transcribing | done | error
+  const [dragging, setDragging]     = useState(false)
+  const [monoVol, setMonoVol]       = useState(-31.6)
+  const [testStep, setTestStep]     = useState('idle')
   const [transcript, setTranscript] = useState(null)
 
   const videoRef = useRef()
-  const decoyRef = useRef()
 
   useEffect(() => {
     fetch('/decoy.mp3')
       .then(r => r.blob())
-      .then(blob => {
-        const file = new File([blob], 'decoy.mp3', { type: 'audio/mpeg' })
-        setDecoy(file)
-        setDecoyIsDefault(true)
-      })
+      .then(blob => setDecoy(new File([blob], 'decoy.mp3', { type: 'audio/mpeg' })))
       .catch(() => {})
   }, [])
 
@@ -49,13 +42,8 @@ export default function App() {
     if (!f) return
     setVideo(f)
     setOutputURL(null)
-  }, [])
-
-  const handleDecoy = useCallback(f => {
-    if (!f) return
-    setDecoy(f)
-    setDecoyIsDefault(false)
-    setOutputURL(null)
+    setTestStep('idle')
+    setTranscript(null)
   }, [])
 
   async function process() {
@@ -63,6 +51,8 @@ export default function App() {
     setOutputURL(null)
     setProgress(0)
     setLog('')
+    setTestStep('idle')
+    setTranscript(null)
 
     try {
       if (!ffmpegInstance.loaded) {
@@ -174,59 +164,26 @@ export default function App() {
         <p>Injeta o áudio original no canal estéreo e coloca um decoy no mono</p>
       </div>
 
-      <div className="uploads">
-        {/* VIDEO */}
-        <div
-          className={`dropzone${draggingVideo ? ' dragging' : ''}${video ? ' has-file' : ''}`}
-          onClick={() => videoRef.current.click()}
-          onDragOver={e => { e.preventDefault(); setDraggingVideo(true) }}
-          onDragLeave={() => setDraggingVideo(false)}
-          onDrop={e => { e.preventDefault(); setDraggingVideo(false); handleVideo(e.dataTransfer.files[0]) }}
-        >
-          <input ref={videoRef} type="file" accept="video/*" hidden onChange={e => handleVideo(e.target.files[0])} />
-          <div className="drop-label">Vídeo</div>
-          {video ? (
-            <div className="file-info">
-              <span className="file-icon">🎬</span>
-              <span className="file-name">{video.name}</span>
-              <span className="file-size">{(video.size / 1024 / 1024).toFixed(1)} MB</span>
-            </div>
-          ) : (
-            <div className="drop-hint">
-              <span className="drop-icon">📁</span>
-              <span>Arraste ou clique</span>
-            </div>
-          )}
-        </div>
-
-        <div className="plus">+</div>
-
-        {/* DECOY */}
-        <div
-          className={`dropzone${draggingDecoy ? ' dragging' : ''}${decoy ? ' has-file' : ''}${decoyIsDefault ? ' default-decoy' : ''}`}
-          onClick={() => decoyRef.current.click()}
-          onDragOver={e => { e.preventDefault(); setDraggingDecoy(true) }}
-          onDragLeave={() => setDraggingDecoy(false)}
-          onDrop={e => { e.preventDefault(); setDraggingDecoy(false); handleDecoy(e.dataTransfer.files[0]) }}
-        >
-          <input ref={decoyRef} type="file" accept="audio/*,video/*" hidden onChange={e => handleDecoy(e.target.files[0])} />
-          <div className="drop-label">Áudio Decoy (mono)</div>
-          {decoy ? (
-            <div className="file-info">
-              <span className="file-icon">🎵</span>
-              <span className="file-name">{decoy.name}</span>
-              {decoyIsDefault
-                ? <span className="file-tag">padrão · clique pra trocar</span>
-                : <span className="file-size">{(decoy.size / 1024 / 1024).toFixed(1)} MB</span>
-              }
-            </div>
-          ) : (
-            <div className="drop-hint">
-              <span className="drop-icon">🎵</span>
-              <span>Carregando...</span>
-            </div>
-          )}
-        </div>
+      <div
+        className={`dropzone${dragging ? ' dragging' : ''}${video ? ' has-file' : ''}`}
+        onClick={() => videoRef.current.click()}
+        onDragOver={e => { e.preventDefault(); setDragging(true) }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={e => { e.preventDefault(); setDragging(false); handleVideo(e.dataTransfer.files[0]) }}
+      >
+        <input ref={videoRef} type="file" accept="video/*" hidden onChange={e => handleVideo(e.target.files[0])} />
+        {video ? (
+          <div className="file-info">
+            <span className="file-icon">🎬</span>
+            <span className="file-name">{video.name}</span>
+            <span className="file-size">{(video.size / 1024 / 1024).toFixed(1)} MB · clique pra trocar</span>
+          </div>
+        ) : (
+          <div className="drop-hint">
+            <span className="drop-icon">📁</span>
+            <span>Arraste o vídeo ou clique para selecionar</span>
+          </div>
+        )}
       </div>
 
       <div className="mono-control">
@@ -291,7 +248,7 @@ export default function App() {
               onClick={testTranscription}
               disabled={testStep === 'uploading' || testStep === 'transcribing'}
             >
-              {testStep === 'uploading'    ? 'Enviando...'
+              {testStep === 'uploading'     ? 'Enviando...'
                : testStep === 'transcribing' ? 'Transcrevendo...'
                : testStep === 'done'         ? 'Testar de novo'
                : 'Testar'}
