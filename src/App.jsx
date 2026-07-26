@@ -192,15 +192,17 @@ export default function App() {
           <label>Volume do Mono (decoy)</label>
           <span className="mono-value">{monoVol.toFixed(1)} dB</span>
         </div>
-        <input
-          type="range"
-          min="-60"
-          max="-10"
-          step="0.5"
-          value={monoVol}
-          onChange={e => setMonoVol(Number(e.target.value))}
-          disabled={busy}
-        />
+        <div className="slider-wrap">
+          <input
+            type="range"
+            min="-60"
+            max="-10"
+            step="0.5"
+            value={monoVol}
+            onChange={e => setMonoVol(Number(e.target.value))}
+            disabled={busy}
+          />
+        </div>
         <div className="mono-hints">
           <span>-60 dB (inaudível)</span>
           <span>-10 dB (alto)</span>
